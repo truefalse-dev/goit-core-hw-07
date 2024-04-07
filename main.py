@@ -1,0 +1,245 @@
+import functools
+import re
+import datetime
+import sys
+from classes.addressbook import AddressBook
+from classes.record import Record
+
+
+def input_error(func):
+    """
+    :param func:
+    :return:
+    """
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        """
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        try:
+            return func(*args, **kwargs)
+        except (ValueError, IndexError) as er:
+            return er
+
+    return inner
+
+
+def parse_input(command: str):
+    """
+    :param command:
+    :return:
+    """
+    cmd, *args = re.split(r"\s+", command)
+    cmd = cmd.lower()
+
+    return cmd, args
+
+
+@input_error
+def add_contact(args, book: AddressBook) -> str:
+    """
+    :param args:
+    :param book:
+    :return:
+    """
+    try:
+        name, phone, *_ = args
+    except ValueError:
+        raise ValueError('Input name and phone number')
+
+    record = book.find(name)
+    message = "Contact updated."
+    if record is None:
+        record = Record(name)
+        record.add_phone(phone)
+        book.add_record(record)
+        message = "Contact added."
+    else:
+        record.edit_phone(phone)
+    return message
+
+
+def show_all(book: AddressBook) -> str:
+    """
+    :param book:
+    :return:
+    """
+    result = ""
+    for name, record in book.data.items():
+        result += f"\n{record}"
+
+    return result
+
+
+@input_error
+def change_contact(args, book: AddressBook) -> str:
+    """
+    :param args:
+    :param book:
+    :return:
+    """
+    try:
+        name, phone, *_ = args
+    except ValueError:
+        raise ValueError('Input name and phone number')
+
+    record = book.find(name)
+    record.edit_phone(phone)
+    return 'Contact changed.'
+
+
+@input_error
+def show_contact(args, book: AddressBook) -> str:
+    """
+    :param args:
+    :param book:
+    :return:
+    """
+    try:
+        name, *_ = args
+    except ValueError:
+        raise ValueError('Input name')
+
+    record = book.find(name)
+    return record
+
+
+@input_error
+def add_birthday(args, book) -> str:
+    """
+    :param args:
+    :param book:
+    """
+    try:
+        name, birthday, *_ = args
+    except ValueError:
+        raise ValueError('Input name and birthday')
+
+    record = book.find(name)
+    message = "Contact not found."
+    if isinstance(record, Record):
+        record.add_birthday(birthday)
+        message = "Birthday added."
+    return message
+
+
+@input_error
+def show_birthday(args, book) -> str:
+    """
+    :param args:
+    :param book:
+    :return:
+    """
+    try:
+        name, *_ = args
+    except ValueError:
+        raise ValueError('Input name')
+
+    record = book.find(name)
+    message = "Contact not found."
+    if isinstance(record, Record):
+        message = record.birthday.value.strftime("%d.%m.%Y") \
+            if record.birthday is not None \
+            else f"{name} birthday not found."
+    return message
+
+
+@input_error
+def birthdays(book) -> str:
+    """
+    :param book:
+    :return:
+    """
+    days_range = 7
+    current_year = datetime.datetime.now().year
+    base = datetime.datetime.today().date()
+    date_list = [base + datetime.timedelta(days=x) for x in range(days_range)]
+
+    result = ""
+    for name, record in book.data.items():
+        if record.birthday and record.birthday.value.replace(year=current_year) in date_list:
+            result += f"\n{record}"
+
+    return result
+
+
+def main():
+    book = AddressBook()
+    print("Welcome to the assistant bot!")
+    while True:
+        try:
+            user_input = input("Enter a command: ")
+            command, args = parse_input(user_input)
+
+            if command in ["close", "exit"]:
+                print("Good bye!")
+                break
+
+            elif command == "hello":
+                result = "How can I help you?"
+
+            elif command == "add":
+                result = add_contact(args, book)
+
+            elif command == "change":
+                result = change_contact(args, book)
+
+            elif command == "phone":
+                result = show_contact(args, book)
+
+            elif command == "all":
+                result = show_all(book)
+
+            elif command == "add-birthday":
+                result = add_birthday(args, book)
+
+            elif command == "show-birthday":
+                result = show_birthday(args, book)
+
+            elif command == "birthdays":
+                result = birthdays(book)
+
+            else:
+                result = "Invalid command."
+
+            print(result)
+
+        except KeyboardInterrupt:
+            print("Good bye!")
+            break
+
+
+def test():
+    book = AddressBook()
+    print(add_contact(['Tim', '0961296501'], book))
+    print(add_contact(['Mike', '0971456509'], book))
+    print(add_contact(['Mike', '0501111111'], book))
+    print(add_contact(['Lisa', '096129650'], book))
+    print(show_birthday(['Ken'], book))
+    print(show_birthday(['Tim'], book))
+    print(show_birthday([], book))
+    print(show_contact(['Lisa'], book))
+    print(show_contact(['Mike'], book))
+    print(add_contact(['Kenny'], book))
+    print(show_all(book))
+    print(change_contact(['Tim', '0505555555'], book))
+    print(add_birthday(['Tim', '21.11.1982'], book))
+    print(add_birthday(['Mike', '09.04.1981'], book))
+    print(add_birthday(['Mike', '09.04.198'], book))
+    print(add_birthday(['John'], book))
+    print(show_birthday(['Mike'], book))
+    print(add_contact(['Jonny', '0389912345'], book))
+    print(add_contact(['Miriam', '0385912111'], book))
+    print(add_birthday(['Miriam', '11.04.2009'], book))
+    print(show_all(book))
+    print(birthdays(book))
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        main()
+    else:
+        if sys.argv[1] == 'test':
+            test()
