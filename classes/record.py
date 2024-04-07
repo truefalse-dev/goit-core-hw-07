@@ -34,5 +34,5 @@ class Record:
         """
         :param phone:
         """
-        self.phones.pop(0)
+        # self.phones.pop(0)
         self.phones.append(Phone(phone))

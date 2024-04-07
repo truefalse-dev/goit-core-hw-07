@@ -4,6 +4,7 @@ import datetime
 import sys
 from classes.addressbook import AddressBook
 from classes.record import Record
+from collections import defaultdict
 
 
 def input_error(func):
@@ -11,6 +12,7 @@ def input_error(func):
     :param func:
     :return:
     """
+
     @functools.wraps(func)
     def inner(*args, **kwargs):
         """
@@ -146,21 +148,49 @@ def show_birthday(args, book) -> str:
     return message
 
 
-@input_error
-def birthdays(book) -> str:
+def next_monday(_datetime) -> datetime:
+    """
+    :param _datetime:
+    :return:
+    """
+    days_ahead = 0 - _datetime.weekday()
+    if days_ahead <= 0:
+        days_ahead += 7
+    return _datetime + datetime.timedelta(days_ahead)
+
+
+def birthdays(book: AddressBook):
     """
     :param book:
     :return:
     """
-    days_range = 7
-    current_year = datetime.datetime.now().year
-    base = datetime.datetime.today().date()
-    date_list = [base + datetime.timedelta(days=x) for x in range(days_range)]
-
     result = ""
-    for name, record in book.data.items():
-        if record.birthday and record.birthday.value.replace(year=current_year) in date_list:
+    for date, records in get_upcoming_birthdays(book).items():
+        result += f"\n{date}"
+        for record in records:
             result += f"\n{record}"
+
+    return result
+
+
+def get_upcoming_birthdays(book: AddressBook):
+    """
+    :param book:
+    :return:
+    """
+    current_year = datetime.datetime.now().year
+    today_date = datetime.datetime.today().date()
+    weekdays = [today_date + datetime.timedelta(days=x) for x in range(0, 7)]
+
+    result = defaultdict(list)
+    for name, record in book.data.items():
+        date_birthday = record.birthday.value.replace(year=current_year) if record.birthday is not None else None
+
+        if date_birthday in weekdays:
+            if date_birthday.weekday() in (5, 6):
+                date_birthday = next_monday(date_birthday)
+
+            result[date_birthday.strftime('%d.%m.%Y')].append(record)
 
     return result
 
@@ -217,6 +247,9 @@ def test():
     print(add_contact(['Mike', '0971456509'], book))
     print(add_contact(['Mike', '0501111111'], book))
     print(add_contact(['Lisa', '096129650'], book))
+    print(add_contact(['Peter', '0380031234'], book))
+    print(add_contact(['Janet', '0730231771'], book))
+    print(add_contact(['Victor', '0115567948'], book))
     print(show_birthday(['Ken'], book))
     print(show_birthday(['Tim'], book))
     print(show_birthday([], book))
@@ -228,11 +261,14 @@ def test():
     print(add_birthday(['Tim', '21.11.1982'], book))
     print(add_birthday(['Mike', '09.04.1981'], book))
     print(add_birthday(['Mike', '09.04.198'], book))
+    print(add_birthday(['Janet', '07.04.1999'], book))
     print(add_birthday(['John'], book))
     print(show_birthday(['Mike'], book))
     print(add_contact(['Jonny', '0389912345'], book))
     print(add_contact(['Miriam', '0385912111'], book))
     print(add_birthday(['Miriam', '11.04.2009'], book))
+    print(add_birthday(['Peter', '13.04.2001'], book))
+    print(add_birthday(['Victor', '13.04.2001'], book))
     print(show_all(book))
     print(birthdays(book))
 
